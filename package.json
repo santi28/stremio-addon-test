@@ -2,6 +2,10 @@
   "name": "stremio",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "dev": "bun dev",
+    "start": "bun run index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/parse-torrent": "^5.8.7"
