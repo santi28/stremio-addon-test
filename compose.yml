@@ -11,7 +11,7 @@ services:
     expose:
       - "7800"                         # Exponer el puerto interno del contenedor
     networks:
-      - proxy
+      - main
     restart: always
 
 networks:
