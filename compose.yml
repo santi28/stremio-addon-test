@@ -1,0 +1,19 @@
+services:
+  stremio-addon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stremio-addon
+    environment:
+      VIRTUAL_HOST: "stremio.santiagodenicolas.com"    # Configuración para Nginx
+      LETSENCRYPT_HOST: "stremio.santiagodenicolas.com" # Configuración para Nginx
+      LETSENCRYPT_EMAIL: "santidenicolas@gmail.com"     # Configuración para Nginx
+    expose:
+      - "7800"                         # Exponer el puerto interno del contenedor
+    networks:
+      - proxy
+    restart: always
+
+networks:
+  main:
+    external: true

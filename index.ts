@@ -1,41 +1,16 @@
-// const { addonBuilder, serveHTTP } = require("stremio-addon-sdk");
-// const fs = require("fs");
-// const path = require("path");
-
 import parseTorrent from "parse-torrent";
 import { addonBuilder, serveHTTP } from "stremio-addon-sdk";
-// import fs from "fs";
-// import path from "path";
-
-// const MAGNETS_FILE = path.join(__dirname, "magnets.json");
-
-// Función para leer y escribir enlaces magnet
-// definir una forma de manejar la lista de reproducción
-// function readMagnets() {
-//   if (!fs.existsSync(MAGNETS_FILE)) {
-//     fs.writeFileSync(MAGNETS_FILE, JSON.stringify([]));
-//   }
-//   return JSON.parse(fs.readFileSync(MAGNETS_FILE));
-// }
-
-// function addMagnet(magnet) {
-//   const magnets = readMagnets();
-//   magnets.push({ id: magnets.length + 1, magnet });
-//   fs.writeFileSync(MAGNETS_FILE, JSON.stringify(magnets));
-// }
 
 const builder = new addonBuilder({
-  id: "org.latest_release_streams",
+  id: "org.stremio.magent-links",
   version: "1.0.0",
-  name: "Remote Magnet Links Streams",
+  name: "Magent Links",
   description: "Brings the stream from remote magnet links",
   catalogs: [],
   resources: ["stream"],
-  types: ["movie"],
+  types: ["series"],
   idPrefixes: ["tt"], // for IMDB ids
 });
-
-const API_URL = "https://api.npoint.io/3f10a371a620d5e65b3e";
 
 const magnetLinks: { [key: string]: { title: string; magnet: string; }[] } = {
   "tt11640018:2:10": [
@@ -70,33 +45,52 @@ const magnetLinks: { [key: string]: { title: string; magnet: string; }[] } = {
   ]
 }
 
+// Manejador de streams
 builder.defineStreamHandler(async ({ type, id }) => {
-  console.log("Stream requested:", type, id);
+  console.log(`Solicitud de stream recibida: Tipo=${type}, ID=${id}`);
 
-  if (type === "series") {
-      try {
-        if (magnetLinks[id]) {
-          return {
-                streams: await Promise.all(magnetLinks[id].map(async (item) => {
-                  const { infoHash, xt, tr } = await parseTorrent(item.magnet);
-
-                  return {
-                    title: item.title,
-                    infoHash: infoHash,
-                    sources: [...xt || [], ...tr || []],
-                  }
-                }))
-            }
-          }
-      } catch (error) {
-          console.error("Error fetching data:", error);
-      }
+  if (type !== "series") {
+    console.warn(`Tipo no soportado: ${type}`);
+    return { streams: [] };
   }
-  return { streams: [] };
+
+  const links = magnetLinks[id];
+  if (!links) {
+    console.warn(`No se encontraron enlaces para el ID: ${id}`);
+    return { streams: [] };
+  }
+
+  try {
+    // Mapear los enlaces magnet a streams compatibles
+    const streams = await Promise.all(
+      links.map(async (item) => {
+        try {
+          const parsed = await parseTorrent(item.magnet);
+
+          return {
+            title: item.title,
+            infoHash: parsed.infoHash,
+            sources: [...(parsed.xt || []), ...(parsed.tr || [])],
+          };
+        } catch (error) {
+          console.error(`Error al analizar el enlace magnet: ${item.magnet}`, error);
+          return null;
+        }
+      })
+    );
+
+    // Filtrar streams válidos
+    return { streams: streams.filter((s) => s !== null) };
+  } catch (error) {
+    console.error("Error en el manejador de streams:", error);
+    return { streams: [] };
+  }
 });
 
 // Iniciar el servidor HTTP
+const PORT = 7800;
 const addonInterface = builder.getInterface();
-serveHTTP(addonInterface, { port: 7800 });
 
-console.log("Stremio addon running on http://localhost:7800");
+serveHTTP(addonInterface, { port: PORT });
+
+console.log(`Stremio addon ejecutándose en http://localhost:${PORT}`);
